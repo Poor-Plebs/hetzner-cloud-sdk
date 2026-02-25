@@ -1,7 +1,7 @@
-# poor-plebs/package-template
+# poor-plebs/hetzner-cloud-sdk
 
-[![CI](https://github.com/Poor-Plebs/package-template/actions/workflows/ci.yml/badge.svg)](https://github.com/Poor-Plebs/package-template/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/Poor-Plebs/package-template/branch/main/graph/badge.svg)](https://codecov.io/gh/Poor-Plebs/package-template)
+[![CI](https://github.com/Poor-Plebs/hetzner-cloud-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Poor-Plebs/hetzner-cloud-sdk/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Poor-Plebs/hetzner-cloud-sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/Poor-Plebs/hetzner-cloud-sdk)
 
 **[What is it for?](#what-is-it-for)** |
 **[What are the requirements?](#what-are-the-requirements)** |
@@ -9,43 +9,90 @@
 **[How to use it?](#how-to-use-it)** |
 **[How to contribute?](#how-to-contribute)**
 
-Put a short one or two sentence description of the package.
+Framework-agnostic Hetzner Cloud API SDK with typed models and safe token obfuscation.
 
 ## What is it for?
 
-Explain in detail here what this package is for.
+A fully async PHP SDK for the [Hetzner Cloud API](https://docs.hetzner.cloud/). All methods return `GuzzleHttp\Promise\PromiseInterface`, allowing non-blocking usage. Features include:
+
+- Typed readonly models with factory methods
+- Bearer token obfuscation in logs and exceptions
+- Automatic retry on connection failures and `Retry-After` responses
+- PSR-3 logger and PSR-16 cache integration
+
+### Supported Resources
+
+- **Servers** — list, get, create, delete, power on/off, rebuild
+- **Firewalls** — list, get, create, delete, set rules, apply/remove resources
+- **SSH Keys** — list, get, create, delete
+- **Actions** — get
 
 ## What are the requirements?
 
-Explain here what the runtime requirements are, which extensions need to be
-installed.
-
 - PHP 8.4 or above
+- `ext-json`
 
 ## How to install it?
 
-Explain here how to install the package.
-
 ```bash
-composer require poor-plebs/package-template
+composer require poor-plebs/hetzner-cloud-sdk
 ```
 
 ## How to use it?
 
-Explain here how to use this package.
+```php
+use PoorPlebs\HetznerCloudSdk\HetznerCloudClient;
+
+$client = new HetznerCloudClient(
+    apiToken: 'your-hetzner-api-token',
+    cache: $yourPsr16Cache,
+);
+
+// List servers
+$response = $client->servers()->list()->wait();
+foreach ($response->result as $server) {
+    echo $server->name . ' — ' . $server->status . PHP_EOL;
+}
+
+// Get a single server
+$response = $client->servers()->get(123)->wait();
+echo $response->result->publicNet->ipv4->ip;
+
+// Create a server
+$response = $client->servers()->create([
+    'name' => 'my-server',
+    'server_type' => 'cx22',
+    'image' => 'ubuntu-24.04',
+    'location' => 'fsn1',
+])->wait();
+
+// Power off a server
+$client->servers()->powerOff(123)->wait();
+
+// List firewalls
+$response = $client->firewalls()->list()->wait();
+
+// Create an SSH key
+$response = $client->sshKeys()->create(
+    name: 'deploy-key',
+    publicKey: 'ssh-rsa AAAA...',
+)->wait();
+
+// Set a PSR-3 logger
+$client->setLogger($yourPsr3Logger);
+```
 
 ## How to contribute?
 
-`poor-plebs/package-template` follows semantic versioning. Read more on
+`poor-plebs/hetzner-cloud-sdk` follows semantic versioning. Read more on
 [semver.org][1].
 
 Create issues to report problems or requests. Fork and create pull requests to
-propose solutions and ideas. Always add a CHANGELOG.md entry in the unreleased
-section.
+propose solutions and ideas.
 
 ### Development Setup
 
-This template uses modern PHP tooling with strict quality standards:
+This project uses modern PHP tooling with strict quality standards:
 
 - **Testing**: [Pest PHP](https://pestphp.com/) v4 with parallel execution
 - **Static Analysis**: PHPStan at level `max` with strict and deprecation rules
@@ -64,16 +111,6 @@ composer csf           # Fix code style
 composer ci            # Run full CI pipeline
 ```
 
-### Architectural Tests
-
-The template includes architectural tests in `tests/ArchTest.php` that enforce:
-- Strict types declaration in all files
-- Proper namespace conventions
-- No debugging functions (`dd`, `dump`, `var_dump`, etc.)
-
-### AI-Assisted Development
-
-See [.github/copilot-instructions.md](.github/copilot-instructions.md) for
-guidelines on AI-assisted contributions.
+If local PHP/Composer are unavailable, use Docker via `bin/dc <composer-args...>`.
 
 [1]: https://semver.org
