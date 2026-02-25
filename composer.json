@@ -21,18 +21,27 @@
     ],
     "archive": {
         "exclude": [
+            "/.claude",
             "/.editorconfig",
             "/.git",
             "/.gitattributes",
             "/.github",
             "/.gitignore",
             "/.php-cs-fixer.dist.php",
+            "/.vscode",
+            "/bin",
             "/cache",
-            "/CHANGELOG.md",
+            "/CLAUDE.md",
+            "/clover.xml",
             "/composer.lock",
+            "/coverage",
+            "/docker-compose.yml",
+            "/Dockerfile",
+            "/junit.xml",
             "/phpstan.neon.dist",
             "/phpunit.xml.dist",
-            "/tests"
+            "/tests",
+            "/vendor"
         ]
     },
     "config": {
@@ -75,10 +84,10 @@
         "cs": "XDEBUG_MODE=off vendor/bin/php-cs-fixer fix --dry-run --verbose --ansi",
         "csf": "XDEBUG_MODE=off vendor/bin/php-cs-fixer fix --verbose --ansi",
         "static": "XDEBUG_MODE=off vendor/bin/phpstan --ansi --no-progress --memory-limit=4G analyse",
-        "test": "XDEBUG_MODE=off vendor/bin/pest --parallel --no-coverage",
-        "coverage": "XDEBUG_MODE=coverage vendor/bin/pest --parallel --coverage --min=80",
-        "coverage-html": "XDEBUG_MODE=coverage vendor/bin/pest --parallel --coverage --coverage-html=coverage --min=80",
-        "coverage-clover": "XDEBUG_MODE=coverage vendor/bin/pest --parallel --coverage --coverage-clover=clover.xml --log-junit=junit.xml --min=80",
-        "type-coverage": "XDEBUG_MODE=off vendor/bin/pest --type-coverage --min=80"
+        "test": "XDEBUG_MODE=off php -d memory_limit=1G vendor/bin/pest --parallel --no-coverage",
+        "coverage": "XDEBUG_MODE=coverage php -d memory_limit=1G vendor/bin/pest --parallel --coverage --min=80",
+        "coverage-html": "XDEBUG_MODE=coverage php -d memory_limit=1G vendor/bin/pest --parallel --coverage --coverage-html=coverage --min=80",
+        "coverage-clover": "XDEBUG_MODE=coverage php -d memory_limit=1G vendor/bin/pest --parallel --coverage --coverage-clover=clover.xml --log-junit=junit.xml --min=80",
+        "type-coverage": "XDEBUG_MODE=off php -d memory_limit=1G vendor/bin/pest --type-coverage --min=80"
     }
 }
