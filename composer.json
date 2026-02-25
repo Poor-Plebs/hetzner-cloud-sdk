@@ -1,22 +1,22 @@
 {
-    "name": "poor-plebs/package-template",
-    "description": "Put a short one or two sentence description of the package.",
+    "name": "poor-plebs/hetzner-cloud-sdk",
+    "description": "Framework-agnostic Hetzner Cloud API SDK with typed models and safe token obfuscation.",
     "type": "library",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "PoorPlebs\\PackageTemplate\\": "src/"
+            "PoorPlebs\\HetznerCloudSdk\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "PoorPlebs\\PackageTemplate\\Tests\\": "tests/"
+            "PoorPlebs\\HetznerCloudSdk\\Tests\\": "tests/"
         }
     },
     "authors": [
         {
-            "name": "John Doe",
-            "email": "john.doe@example.com"
+            "name": "Petr Levtonov",
+            "email": "petr@levtonov.com"
         }
     ],
     "archive": {
@@ -55,7 +55,13 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": "^8.4.0"
+        "php": "^8.4.0",
+        "guzzlehttp/guzzle": "^7.10.0",
+        "poor-plebs/guzzle-connect-retry-decider": "^1.1.1",
+        "poor-plebs/guzzle-obfuscated-formatter": "^1.0.1",
+        "poor-plebs/guzzle-retry-after-middleware": "^3.1.0",
+        "psr/log": "^3.0.2",
+        "psr/simple-cache": "^3.0"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.92.5",

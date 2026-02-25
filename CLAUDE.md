@@ -1,21 +1,32 @@
-# Agent instructions for poor-plebs/package-template
+# Agent instructions for poor-plebs/hetzner-cloud-sdk
 
 ## Project Overview
 
-This is a framework-agnostic PHP package template designed for building reusable PHP libraries. It provides a modern development environment with strict coding standards, comprehensive testing, and automated quality checks.
+Framework-agnostic Hetzner Cloud API SDK with typed readonly models, fully async operations (all methods return `PromiseInterface`), custom Guzzle handler stack with middleware, Bearer token obfuscation, and PSR-3/PSR-16 integration.
 
 ## Directory Structure
 
 ```text
-├── src/                  # Source code (PSR-4: PoorPlebs\PackageTemplate)
-├── tests/                # Test files (Pest PHP)
-│   ├── Pest.php          # Pest configuration
-│   ├── ArchTest.php      # Architectural tests
-│   └── *Test.php         # Feature/Unit tests
-├── cache/                # Tool caches (gitignored)
-├── vendor/               # Composer dependencies
-├── .github/              # GitHub workflows and config
-└── *.dist files          # Distribution config files
+├── src/
+│   ├── HetznerCloudClient.php           # Main client (final, LoggerAwareInterface)
+│   ├── GuzzleHttp/Exception/            # Custom Guzzle exceptions with token obfuscation
+│   ├── Models/                           # Readonly data models with static create() factories
+│   ├── Obfuscator/                       # Bearer token obfuscator for logging
+│   ├── Psr/Log/                          # WrappedLogger (swappable logger delegate)
+│   ├── Resources/                        # API resource classes (Servers, Firewalls, SshKeys, Actions)
+│   └── Responses/                        # Typed response classes extending HetznerResponse
+├── tests/
+│   ├── Pest.php                          # Pest configuration
+│   ├── ArchTest.php                      # Architectural tests
+│   ├── HetznerCloudClientTest.php        # Client tests
+│   ├── GuzzleHttp/Exception/            # Exception tests
+│   ├── Resources/                        # Resource tests
+│   ├── Responses/                        # Response tests
+│   └── Support/                          # Test helpers (InMemoryCache)
+├── cache/                                # Tool caches (gitignored)
+├── vendor/                               # Composer dependencies
+├── .github/                              # GitHub workflows and config
+└── *.dist files                          # Distribution config files
 ```
 
 ## Coding Standards
@@ -28,13 +39,37 @@ This is a framework-agnostic PHP package template designed for building reusable
 
 ### Namespace Conventions
 
-- Source code: `PoorPlebs\PackageTemplate\*`
-- Tests: `PoorPlebs\PackageTemplate\Tests\*`
+- Source code: `PoorPlebs\HetznerCloudSdk\*`
+- Tests: `PoorPlebs\HetznerCloudSdk\Tests\*`
 
 ### Forbidden Patterns
 
 - No debugging functions: `dd()`, `dump()`, `var_dump()`, `print_r()`, `ray()`
 - Enforced via architectural tests in `tests/ArchTest.php`
+
+## Architecture
+
+### Client Pattern
+
+`HetznerCloudClient` is a final class implementing `LoggerAwareInterface`. It builds a Guzzle `HandlerStack` with:
+1. `connect_retry` — retries on connection failures
+2. `obfuscated_logger` — logs requests/responses with token obfuscation
+3. `http_errors` — custom middleware using our `RequestException::create()` for header obfuscation
+4. `retry_after` — respects `Retry-After` headers via PSR-16 cache
+
+Resource accessors (`servers()`, `firewalls()`, `sshKeys()`, `actions()`) are lazily instantiated and cached.
+
+### Models
+
+All models use `readonly` constructor properties with `static create(array $data): self` factories. Snake_case API keys map to camelCase properties.
+
+### Responses
+
+`HetznerResponse` is the base class. Subclasses override `init(array $data)` to hydrate typed `$result`. Pagination is extracted from `meta.pagination`.
+
+### Token Obfuscation
+
+Hetzner uses `Authorization: Bearer <token>` headers (not URI path like Telegram). The `HetznerApiTokenObfuscator` targets this header pattern. Exceptions obfuscate the Authorization header before including it in error messages.
 
 ## Tooling Commands
 
@@ -90,7 +125,7 @@ composer type-coverage # Run type coverage check (min 80%)
 
 ## Testing with Pest
 
-This template uses [Pest PHP](https://pestphp.com/) v4 for testing.
+This project uses [Pest PHP](https://pestphp.com/) v4 for testing with mocked Guzzle HTTP responses.
 
 ### Writing Tests
 
@@ -99,18 +134,12 @@ This template uses [Pest PHP](https://pestphp.com/) v4 for testing.
 
 declare(strict_types=1);
 
-use PoorPlebs\PackageTemplate\YourClass;
+use PoorPlebs\HetznerCloudSdk\HetznerCloudClient;
 
-covers(YourClass::class);
+covers(HetznerCloudClient::class);
 
 it('does something', function (): void {
-    $instance = new YourClass();
-
-    expect($instance->method())->toBe('expected');
-});
-
-test('another scenario', function (): void {
-    // Test implementation
+    // Use MockHandler + HandlerStack + Middleware::history() for HTTP mocking
 });
 ```
 
@@ -120,7 +149,7 @@ Add constraints to `tests/ArchTest.php`:
 
 ```php
 arch('classes follow naming convention')
-    ->expect('PoorPlebs\PackageTemplate')
+    ->expect('PoorPlebs\HetznerCloudSdk')
     ->classes()
     ->toHaveSuffix('Handler');
 ```
