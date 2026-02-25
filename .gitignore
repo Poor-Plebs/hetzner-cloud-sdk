@@ -1,5 +1,6 @@
 /.idea
 /.vscode
+/.claude/settings.local.json
 /cache/
 /clover.xml
 /coverage

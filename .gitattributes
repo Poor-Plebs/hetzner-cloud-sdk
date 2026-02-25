@@ -8,9 +8,11 @@
 /.gitattributes export-ignore
 /.github export-ignore
 /.gitignore export-ignore
+/.claude export-ignore
 /.php-cs-fixer.dist.php export-ignore
 /cache export-ignore
 /CHANGELOG.md export-ignore
+/CLAUDE.md export-ignore
 /composer.lock export-ignore
 /phpstan.neon.dist export-ignore
 /phpunit.xml.dist export-ignore
