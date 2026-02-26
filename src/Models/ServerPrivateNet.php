@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace PoorPlebs\HetznerCloudSdk\Models;
 
-class PublicNet
+class ServerPrivateNet
 {
     /**
-     * @param array<int,int> $floatingIps
-     * @param array<int,array<string,mixed>> $firewalls
+     * @param array<int,string> $aliasIps
      */
     public function __construct(
-        public readonly Ipv4 $ipv4,
-        public readonly Ipv6 $ipv6,
-        public readonly array $floatingIps,
-        public readonly array $firewalls,
+        public readonly int $network,
+        public readonly string $ip,
+        public readonly array $aliasIps,
+        public readonly string $macAddress,
     ) {
     }
 
@@ -25,13 +24,13 @@ class PublicNet
     {
         return new self(
             /** @phpstan-ignore-next-line */
-            ipv4: Ipv4::create($data['ipv4']),
+            network: $data['network'],
             /** @phpstan-ignore-next-line */
-            ipv6: Ipv6::create($data['ipv6']),
+            ip: $data['ip'],
             /** @phpstan-ignore-next-line */
-            floatingIps: $data['floating_ips'] ?? [],
+            aliasIps: $data['alias_ips'] ?? [],
             /** @phpstan-ignore-next-line */
-            firewalls: $data['firewalls'] ?? [],
+            macAddress: $data['mac_address'],
         );
     }
 }

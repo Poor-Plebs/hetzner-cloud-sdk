@@ -119,3 +119,80 @@ it('deletes an ssh key', function (): void {
     expect($history[0]['request']->getMethod())->toBe('DELETE')
         ->and((string)$history[0]['request']->getUri())->toContain('/ssh_keys/7');
 });
+
+it('lists all ssh keys from a single page', function (): void {
+    $history = [];
+
+    $client = makeSshKeysClient([
+        new Response(200, ['Content-Type' => 'application/json'], json_encode([
+            'ssh_keys' => [sshKeyPayload(1, 'key-1'), sshKeyPayload(2, 'key-2')],
+            'meta' => ['pagination' => [
+                'page' => 1, 'per_page' => 50, 'previous_page' => null,
+                'next_page' => null, 'last_page' => 1, 'total_entries' => 2,
+            ]],
+        ], JSON_THROW_ON_ERROR)),
+    ], $history);
+
+    $result = $client->sshKeys()->listAll()->wait();
+
+    expect($result)->toBeArray()->toHaveCount(2)
+        ->and($result[0])->toBeInstanceOf(SshKey::class)
+        ->and($result[0]->name)->toBe('key-1')
+        ->and($result[1]->name)->toBe('key-2')
+        ->and($history)->toHaveCount(1);
+});
+
+it('lists all ssh keys across multiple pages concurrently', function (): void {
+    $history = [];
+
+    $client = makeSshKeysClient([
+        new Response(200, ['Content-Type' => 'application/json'], json_encode([
+            'ssh_keys' => [sshKeyPayload(1, 'key-1')],
+            'meta' => ['pagination' => [
+                'page' => 1, 'per_page' => 1, 'previous_page' => null,
+                'next_page' => 2, 'last_page' => 3, 'total_entries' => 3,
+            ]],
+        ], JSON_THROW_ON_ERROR)),
+        new Response(200, ['Content-Type' => 'application/json'], json_encode([
+            'ssh_keys' => [sshKeyPayload(2, 'key-2')],
+            'meta' => ['pagination' => [
+                'page' => 2, 'per_page' => 1, 'previous_page' => 1,
+                'next_page' => 3, 'last_page' => 3, 'total_entries' => 3,
+            ]],
+        ], JSON_THROW_ON_ERROR)),
+        new Response(200, ['Content-Type' => 'application/json'], json_encode([
+            'ssh_keys' => [sshKeyPayload(3, 'key-3')],
+            'meta' => ['pagination' => [
+                'page' => 3, 'per_page' => 1, 'previous_page' => 2,
+                'next_page' => null, 'last_page' => 3, 'total_entries' => 3,
+            ]],
+        ], JSON_THROW_ON_ERROR)),
+    ], $history);
+
+    $result = $client->sshKeys()->listAll(perPage: 1)->wait();
+
+    expect($result)->toBeArray()->toHaveCount(3)
+        ->and($result[0]->name)->toBe('key-1')
+        ->and($result[1]->name)->toBe('key-2')
+        ->and($result[2]->name)->toBe('key-3')
+        ->and($history)->toHaveCount(3);
+});
+
+it('lists all ssh keys returns empty array when no keys exist', function (): void {
+    $history = [];
+
+    $client = makeSshKeysClient([
+        new Response(200, ['Content-Type' => 'application/json'], json_encode([
+            'ssh_keys' => [],
+            'meta' => ['pagination' => [
+                'page' => 1, 'per_page' => 50, 'previous_page' => null,
+                'next_page' => null, 'last_page' => 1, 'total_entries' => 0,
+            ]],
+        ], JSON_THROW_ON_ERROR)),
+    ], $history);
+
+    $result = $client->sshKeys()->listAll()->wait();
+
+    expect($result)->toBeArray()->toBeEmpty()
+        ->and($history)->toHaveCount(1);
+});

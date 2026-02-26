@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace PoorPlebs\HetznerCloudSdk\Models;
 
-class FirewallResource
+class Subnet
 {
     public function __construct(
         public readonly string $type,
-        public readonly ?FirewallResourceServer $server,
-        public readonly ?FirewallResourceLabelSelector $labelSelector,
+        public readonly string $ipRange,
+        public readonly string $networkZone,
+        public readonly string $gateway,
+        public readonly ?int $vswitchId,
     ) {
     }
 
@@ -22,9 +24,13 @@ class FirewallResource
             /** @phpstan-ignore-next-line */
             type: $data['type'],
             /** @phpstan-ignore-next-line */
-            server: isset($data['server']) ? FirewallResourceServer::create($data['server']) : null,
+            ipRange: $data['ip_range'],
             /** @phpstan-ignore-next-line */
-            labelSelector: isset($data['label_selector']) ? FirewallResourceLabelSelector::create($data['label_selector']) : null,
+            networkZone: $data['network_zone'],
+            /** @phpstan-ignore-next-line */
+            gateway: $data['gateway'],
+            /** @phpstan-ignore-next-line */
+            vswitchId: $data['vswitch_id'] ?? null,
         );
     }
 }

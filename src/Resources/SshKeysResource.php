@@ -6,6 +6,7 @@ namespace PoorPlebs\HetznerCloudSdk\Resources;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Promise\Utils;
 use GuzzleHttp\RequestOptions;
 use PoorPlebs\HetznerCloudSdk\Responses\SshKeyListResponse;
 use PoorPlebs\HetznerCloudSdk\Responses\SshKeyResponse;
@@ -56,5 +57,33 @@ class SshKeysResource
                 ],
             ])
             ->then(SshKeyListResponse::make(...));
+    }
+
+    public function listAll(int $perPage = 50): PromiseInterface
+    {
+        return $this->list(1, $perPage)->then(function (SshKeyListResponse $first) use ($perPage): PromiseInterface|array {
+            $results = $first->result;
+            $lastPage = $first->pagination !== null ? $first->pagination->lastPage : 1;
+
+            if ($lastPage <= 1) {
+                return $results;
+            }
+
+            $promises = [];
+            for ($page = 2; $page <= $lastPage; $page++) {
+                $promises[] = $this->list($page, $perPage);
+            }
+
+            return Utils::all($promises)->then(
+                static function (array $responses) use ($results): array {
+                    /** @var array<int,SshKeyListResponse> $responses */
+                    foreach ($responses as $response) {
+                        $results = array_merge($results, $response->result);
+                    }
+
+                    return $results;
+                },
+            );
+        });
     }
 }

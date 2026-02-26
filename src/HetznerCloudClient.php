@@ -19,6 +19,7 @@ use PoorPlebs\HetznerCloudSdk\Obfuscator\HetznerApiTokenObfuscator;
 use PoorPlebs\HetznerCloudSdk\Psr\Log\WrappedLogger;
 use PoorPlebs\HetznerCloudSdk\Resources\ActionsResource;
 use PoorPlebs\HetznerCloudSdk\Resources\FirewallsResource;
+use PoorPlebs\HetznerCloudSdk\Resources\NetworksResource;
 use PoorPlebs\HetznerCloudSdk\Resources\ServersResource;
 use PoorPlebs\HetznerCloudSdk\Resources\SshKeysResource;
 use Psr\Http\Message\RequestInterface;
@@ -47,6 +48,8 @@ final class HetznerCloudClient implements LoggerAwareInterface
 
     private ?FirewallsResource $firewallsResource = null;
 
+    private ?NetworksResource $networksResource = null;
+
     private ?ServersResource $serversResource = null;
 
     private ?SshKeysResource $sshKeysResource = null;
@@ -65,7 +68,9 @@ final class HetznerCloudClient implements LoggerAwareInterface
             (new ObfuscatedMessageFormatter(ObfuscatedMessageFormatter::DEBUG))
                 ->setRequestHeaders([
                     HetznerApiTokenObfuscator::TOKEN_REGEX => new HetznerApiTokenObfuscator(),
-                ]);
+                ])
+                ->setRequestBodyParameters(['public_key', 'user_data'])
+                ->setResponseBodyParameters(['ip', 'public_key', 'fingerprint']);
 
         $handlerStack = HandlerStack::create();
 
@@ -117,6 +122,15 @@ final class HetznerCloudClient implements LoggerAwareInterface
         }
 
         return $this->firewallsResource;
+    }
+
+    public function networks(): NetworksResource
+    {
+        if ($this->networksResource === null) {
+            $this->networksResource = new NetworksResource($this->client);
+        }
+
+        return $this->networksResource;
     }
 
     public function servers(): ServersResource

@@ -6,6 +6,7 @@ namespace PoorPlebs\HetznerCloudSdk\Resources;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Promise\Utils;
 use GuzzleHttp\RequestOptions;
 use PoorPlebs\HetznerCloudSdk\Responses\ActionResponse;
 use PoorPlebs\HetznerCloudSdk\Responses\ServerListResponse;
@@ -16,6 +17,30 @@ class ServersResource
     public function __construct(
         private readonly Client $client,
     ) {
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
+    public function attachToNetwork(int $id, array $payload): PromiseInterface
+    {
+        return $this->client
+            ->postAsync("servers/{$id}/actions/attach_to_network", [
+                RequestOptions::JSON => $payload,
+            ])
+            ->then(ActionResponse::make(...));
+    }
+
+    public function changeProtection(int $id, bool $delete, bool $rebuild): PromiseInterface
+    {
+        return $this->client
+            ->postAsync("servers/{$id}/actions/change_protection", [
+                RequestOptions::JSON => [
+                    'delete' => $delete,
+                    'rebuild' => $rebuild,
+                ],
+            ])
+            ->then(ActionResponse::make(...));
     }
 
     /**
@@ -37,6 +62,17 @@ class ServersResource
             ->then(ActionResponse::make(...));
     }
 
+    public function detachFromNetwork(int $id, int $networkId): PromiseInterface
+    {
+        return $this->client
+            ->postAsync("servers/{$id}/actions/detach_from_network", [
+                RequestOptions::JSON => [
+                    'network' => $networkId,
+                ],
+            ])
+            ->then(ActionResponse::make(...));
+    }
+
     public function get(int $id): PromiseInterface
     {
         return $this->client
@@ -54,6 +90,34 @@ class ServersResource
                 ],
             ])
             ->then(ServerListResponse::make(...));
+    }
+
+    public function listAll(int $perPage = 50): PromiseInterface
+    {
+        return $this->list(1, $perPage)->then(function (ServerListResponse $first) use ($perPage): PromiseInterface|array {
+            $results = $first->result;
+            $lastPage = $first->pagination !== null ? $first->pagination->lastPage : 1;
+
+            if ($lastPage <= 1) {
+                return $results;
+            }
+
+            $promises = [];
+            for ($page = 2; $page <= $lastPage; $page++) {
+                $promises[] = $this->list($page, $perPage);
+            }
+
+            return Utils::all($promises)->then(
+                static function (array $responses) use ($results): array {
+                    /** @var array<int,ServerListResponse> $responses */
+                    foreach ($responses as $response) {
+                        $results = array_merge($results, $response->result);
+                    }
+
+                    return $results;
+                },
+            );
+        });
     }
 
     public function powerOff(int $id): PromiseInterface

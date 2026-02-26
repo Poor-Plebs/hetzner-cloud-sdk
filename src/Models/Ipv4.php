@@ -9,6 +9,8 @@ class Ipv4
     public function __construct(
         public readonly string $ip,
         public readonly bool $blocked,
+        public readonly ?string $dnsPtr,
+        public readonly ?int $id,
     ) {
     }
 
@@ -22,6 +24,10 @@ class Ipv4
             ip: $data['ip'],
             /** @phpstan-ignore-next-line */
             blocked: $data['blocked'],
+            /** @phpstan-ignore-next-line */
+            dnsPtr: $data['dns_ptr'] ?? null,
+            /** @phpstan-ignore-next-line */
+            id: $data['id'] ?? null,
         );
     }
 }

@@ -8,6 +8,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use PoorPlebs\GuzzleObfuscatedFormatter\GuzzleHttp\ObfuscatedMessageFormatter;
 use PoorPlebs\HetznerCloudSdk\GuzzleHttp\Exception\ClientException;
 use PoorPlebs\HetznerCloudSdk\GuzzleHttp\Exception\ServerException;
 use PoorPlebs\HetznerCloudSdk\HetznerCloudClient;
@@ -15,6 +16,7 @@ use PoorPlebs\HetznerCloudSdk\Obfuscator\HetznerApiTokenObfuscator;
 use PoorPlebs\HetznerCloudSdk\Psr\Log\WrappedLogger;
 use PoorPlebs\HetznerCloudSdk\Resources\ActionsResource;
 use PoorPlebs\HetznerCloudSdk\Resources\FirewallsResource;
+use PoorPlebs\HetznerCloudSdk\Resources\NetworksResource;
 use PoorPlebs\HetznerCloudSdk\Resources\ServersResource;
 use PoorPlebs\HetznerCloudSdk\Resources\SshKeysResource;
 use PoorPlebs\HetznerCloudSdk\Tests\Support\InMemoryCache;
@@ -92,6 +94,7 @@ it('returns resource accessor instances', function (): void {
 
     expect($client->servers())->toBeInstanceOf(ServersResource::class)
         ->and($client->firewalls())->toBeInstanceOf(FirewallsResource::class)
+        ->and($client->networks())->toBeInstanceOf(NetworksResource::class)
         ->and($client->sshKeys())->toBeInstanceOf(SshKeysResource::class)
         ->and($client->actions())->toBeInstanceOf(ActionsResource::class);
 });
@@ -104,6 +107,7 @@ it('returns the same resource instance on repeated calls', function (): void {
 
     expect($client->servers())->toBe($client->servers())
         ->and($client->firewalls())->toBe($client->firewalls())
+        ->and($client->networks())->toBe($client->networks())
         ->and($client->sshKeys())->toBe($client->sshKeys())
         ->and($client->actions())->toBe($client->actions());
 });
@@ -230,4 +234,57 @@ it('rethrows non-connect exceptions from the http error middleware', function ()
 
     expect(fn (): mixed => $client->servers()->list()->wait())
         ->toThrow(RuntimeException::class, 'unexpected transport failure');
+});
+
+it('obfuscates sensitive request body fields in log output', function (): void {
+    $formatter = (new ObfuscatedMessageFormatter(ObfuscatedMessageFormatter::DEBUG))
+        ->setRequestBodyParameters(['public_key', 'user_data'])
+        ->setResponseBodyParameters(['ip', 'public_key', 'fingerprint']);
+
+    $request = new Request('POST', 'https://api.hetzner.cloud/v1/ssh_keys', [
+        'Content-Type' => 'application/json',
+    ], json_encode([
+        'name' => 'deploy-key',
+        'public_key' => 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB',
+        'user_data' => '#cloud-config\npassword: s3cret',
+    ], JSON_THROW_ON_ERROR));
+
+    $output = $formatter->format($request);
+
+    expect($output)
+        ->toContain('deploy-key')
+        ->not->toContain('ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB')
+        ->not->toContain('#cloud-config');
+});
+
+it('obfuscates sensitive response body fields in log output', function (): void {
+    $formatter = (new ObfuscatedMessageFormatter(ObfuscatedMessageFormatter::DEBUG))
+        ->setRequestBodyParameters(['public_key', 'user_data'])
+        ->setResponseBodyParameters(['ip', 'public_key', 'fingerprint']);
+
+    $request = new Request('GET', 'https://api.hetzner.cloud/v1/ssh_keys');
+
+    $response = new Response(200, ['Content-Type' => 'application/json'], json_encode([
+        'ssh_key' => [
+            'id' => 123,
+            'name' => 'deploy-key',
+            'public_key' => 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB',
+            'fingerprint' => 'b7:2f:30:a0:2f:6c:58:6c:21:04:58:61:ba:06:3b:2c',
+        ],
+        'server' => [
+            'public_net' => [
+                'ipv4' => ['ip' => '1.2.3.4'],
+                'ipv6' => ['ip' => '2001:db8::1'],
+            ],
+        ],
+    ], JSON_THROW_ON_ERROR));
+
+    $output = $formatter->format($request, $response);
+
+    expect($output)
+        ->toContain('deploy-key')
+        ->not->toContain('ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB')
+        ->not->toContain('b7:2f:30:a0:2f:6c:58:6c:21:04:58:61:ba:06:3b:2c')
+        ->not->toContain('1.2.3.4')
+        ->not->toContain('2001:db8::1');
 });

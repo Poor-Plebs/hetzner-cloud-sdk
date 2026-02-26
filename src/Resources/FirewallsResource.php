@@ -6,6 +6,7 @@ namespace PoorPlebs\HetznerCloudSdk\Resources;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Promise\Utils;
 use GuzzleHttp\RequestOptions;
 use PoorPlebs\HetznerCloudSdk\Responses\ActionListResponse;
 use PoorPlebs\HetznerCloudSdk\Responses\FirewallListResponse;
@@ -74,6 +75,34 @@ class FirewallsResource
             ->then(FirewallListResponse::make(...));
     }
 
+    public function listAll(int $perPage = 50): PromiseInterface
+    {
+        return $this->list(1, $perPage)->then(function (FirewallListResponse $first) use ($perPage): PromiseInterface|array {
+            $results = $first->result;
+            $lastPage = $first->pagination !== null ? $first->pagination->lastPage : 1;
+
+            if ($lastPage <= 1) {
+                return $results;
+            }
+
+            $promises = [];
+            for ($page = 2; $page <= $lastPage; $page++) {
+                $promises[] = $this->list($page, $perPage);
+            }
+
+            return Utils::all($promises)->then(
+                static function (array $responses) use ($results): array {
+                    /** @var array<int,FirewallListResponse> $responses */
+                    foreach ($responses as $response) {
+                        $results = array_merge($results, $response->result);
+                    }
+
+                    return $results;
+                },
+            );
+        });
+    }
+
     /**
      * @param array<int,array<string,mixed>> $resources
      */
@@ -100,5 +129,17 @@ class FirewallsResource
                 ],
             ])
             ->then(ActionListResponse::make(...));
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
+    public function update(int $id, array $payload): PromiseInterface
+    {
+        return $this->client
+            ->putAsync("firewalls/{$id}", [
+                RequestOptions::JSON => $payload,
+            ])
+            ->then(FirewallResponse::make(...));
     }
 }
